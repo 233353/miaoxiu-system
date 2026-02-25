@@ -48,7 +48,7 @@
 # 安装步骤
 
 # 1. 克隆项目
-git clone https://github.com/2333/miaoxiu-project.git
+git clone https://github.com/233353/miaoxiu-system.git
 cd miaoxiu-project
 
 # 2. 安装依赖
