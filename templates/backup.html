@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4"><i class="fas fa-database"></i> 数据备份与恢复</h1>
+    
+    <!-- 备份功能 -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-save"></i> 数据备份</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">选择备份位置：</label>
+                <select class="form-select" id="backupPath">
+                    {% for device in backup_devices %}
+                    <option value="{{ device.path }}">{{ device.name }} (可用空间: {{ device.free_space }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="button" class="btn btn-success" onclick="createBackup()">
+                <i class="fas fa-download"></i> 创建备份
+            </button>
+            <div id="backupResult" class="mt-3" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- 恢复功能 -->
+    <div class="card">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="fas fa-undo"></i> 数据恢复</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>警告：</strong>恢复操作将覆盖当前数据，请谨慎操作！
+            </div>
+            <div class="mb-3">
+                <label for="restoreFile" class="form-label">选择备份文件：</label>
+                <input type="file" class="form-control" id="restoreFile" accept=".zip">
+                <div class="form-text">请选择之前创建的 .zip 备份文件</div>
+            </div>
+            <button type="button" class="btn btn-warning" onclick="restoreBackup()">
+                <i class="fas fa-upload"></i> 恢复数据
+            </button>
+            <div id="restoreResult" class="mt-3" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- 备份记录查看 -->
+    <div class="card mt-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-history"></i> 备份记录管理</h5>
+        </div>
+        <div class="card-body">
+            <p>查看所有备份和恢复操作的记录</p>
+            <a href="{{ url_for('backup_records') }}" class="btn btn-primary">
+                <i class="fas fa-list"></i> 查看备份记录
+            </a>
+        </div>
+    </div>
+
+    <!-- 显示最近的备份记录 -->
+    {% if recent_records %}
+    <div class="card mt-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-clock"></i> 最近备份记录</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>类型</th>
+                            <th>状态</th>
+                            <th>时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in recent_records %}
+                        <tr>
+                            <td>{{ record.备份ID or record.id }}</td>
+                            <td>
+                                {% if record.备份类型 == 'manual' or record.backup_type == 'manual' %}
+                                <span class="badge bg-info">手动备份</span>
+                                {% elif record.备份类型 == 'restore' or record.backup_type == 'restore' %}
+                                <span class="badge bg-warning">恢复操作</span>
+                                {% else %}
+                                {{ record.备份类型 or record.backup_type }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if record.备份状态 == '成功' or record.status == 'success' %}
+                                <span class="badge bg-success">成功</span>
+                                {% elif record.备份状态 == '失败' or record.status == 'failed' %}
+                                <span class="badge bg-danger">失败</span>
+                                {% else %}
+                                {{ record.备份状态 or record.status }}
+                                {% endif %}
+                            </td>
+                            <td>{{ (record.备份时间 or record.created_at)[:19] if (record.备份时间 or record.created_at) else '' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 备份说明 -->
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-info-circle"></i> 备份说明</h5>
+        </div>
+        <div class="card-body">
+            <ul>
+                <li>备份文件包含数据库和所有上传的纹样图片</li>
+                <li>建议定期备份重要数据</li>
+                <li>备份文件为ZIP格式，便于传输和存储</li>
+                <li>恢复操作前会自动创建当前数据的备份</li>
+                <li>所有备份和恢复操作都会被记录到数据库</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- 加载动画 -->
+<div id="loading" class="position-fixed top-50 start-50 translate-middle" style="display: none; z-index: 9999;">
+    <div class="text-center bg-light p-4 rounded shadow">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">处理中...</span>
+        </div>
+        <p id="loadingText">处理中，请稍候...</p>
+    </div>
+</div>
+
+<script>
+// 创建备份
+function createBackup() {
+    const backupPath = document.getElementById('backupPath').value;
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loadingText');
+    const resultDiv = document.getElementById('backupResult');
+
+    loadingText.textContent = '正在创建备份，请稍候...';
+    loading.style.display = 'block';
+
+    fetch('/api/backup', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ backup_path: backupPath })
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.style.display = 'none';
+
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    备份成功！<br>
+                    <small>备份文件: ${data.backup_file}<br>
+                    文件大小: ${data.file_size} KB</small>
+                </div>
+            `;
+            // 3秒后刷新页面显示新记录
+            setTimeout(() => location.reload(), 3000);
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    ${data.error}
+                </div>
+            `;
+        }
+        resultDiv.style.display = 'block';
+    })
+    .catch(error => {
+        loading.style.display = 'none';
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle"></i>
+                备份失败: ${error}
+            </div>
+        `;
+        resultDiv.style.display = 'block';
+    });
+}
+
+// 恢复备份
+function restoreBackup() {
+    const restoreFile = document.getElementById('restoreFile').files[0];
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loadingText');
+    const resultDiv = document.getElementById('restoreResult');
+
+    if (!restoreFile) {
+        alert('请选择备份文件');
+        return;
+    }
+
+    if (!confirm('确定要恢复数据吗？此操作将覆盖当前数据！')) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('backup_file', restoreFile);
+
+    loadingText.textContent = '正在恢复数据，请稍候...';
+    loading.style.display = 'block';
+
+    fetch('/api/restore', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.style.display = 'none';
+
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    数据恢复成功！<br>
+                    <small>恢复完成后将自动刷新页面</small>
+                </div>
+            `;
+            // 5秒后刷新页面
+            setTimeout(() => location.reload(), 5000);
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    ${data.error}
+                </div>
+            `;
+        }
+        resultDiv.style.display = 'block';
+    })
+    .catch(error => {
+        loading.style.display = 'none';
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle"></i>
+                恢复失败: ${error}
+            </div>
+        `;
+        resultDiv.style.display = 'block';
+    });
+}
+</script>
+
+<style>
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.alert {
+    border: none;
+    border-left: 4px solid;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4"><i class="fas fa-users-cog"></i> 用户管理</h1>
+    
+    <!-- 添加用户表单 -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-user-plus"></i> 添加新用户</h5>
+        </div>
+        <div class="card-body">
+            <form id="addUserForm">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">用户名 *</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="password" class="form-label">密码 *</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="real_name" class="form-label">真实姓名</label>
+                            <input type="text" class="form-control" id="real_name" name="real_name">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="role" class="form-label">角色</label>
+                            <select class="form-select" id="role" name="role">
+                                <option value="user">普通用户</option>
+                                <option value="admin">管理员</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">联系电话</label>
+                            <input type="text" class="form-control" id="phone" name="phone">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus"></i> 添加用户
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <div id="addUserResult" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- 用户列表 -->
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-list"></i> 用户列表</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>真实姓名</th>
+                            <th>角色</th>
+                            <th>联系电话</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>
+                                <strong>{{ user.username }}</strong>
+                                {% if user.id == session.user_id %}
+                                <span class="badge bg-info">当前用户</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.real_name or '-' }}</td>
+                            <td>
+                                {% if user.role == 'admin' %}
+                                <span class="badge bg-danger">管理员</span>
+                                {% else %}
+                                <span class="badge bg-secondary">普通用户</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.phone or '-' }}</td>
+                            <td>{{ user.created_at[:16] }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-warning" 
+                                            onclick="showResetPasswordModal({{ user.id }}, '{{ user.username }}')">
+                                        <i class="fas fa-key"></i> 重置密码
+                                    </button>
+                                    {% if user.id != session.user_id %}
+                                    <button type="button" class="btn btn-outline-danger" 
+                                            onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                                        <i class="fas fa-trash"></i> 删除
+                                    </button>
+                                    {% else %}
+                                    <button type="button" class="btn btn-outline-secondary" disabled>
+                                        <i class="fas fa-trash"></i> 删除
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 重置密码模态框 -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">重置密码</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>为用户 <strong id="resetUsername"></strong> 设置新密码：</p>
+                <div class="mb-3">
+                    <label for="newPassword" class="form-label">新密码</label>
+                    <input type="password" class="form-control" id="newPassword" required>
+                    <div class="form-text">密码长度至少6位</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-warning" onclick="confirmResetPassword()">确认重置</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 加载动画 -->
+<div id="loading" class="position-fixed top-50 start-50 translate-middle" style="display: none; z-index: 9999;">
+    <div class="text-center bg-light p-4 rounded shadow">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">处理中...</span>
+        </div>
+        <p>处理中，请稍候...</p>
+    </div>
+</div>
+
+<script>
+let currentResetUserId = null;
+
+// 添加用户
+document.getElementById('addUserForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const resultDiv = document.getElementById('addUserResult');
+    const loading = document.getElementById('loading');
+    
+    loading.style.display = 'block';
+    
+    fetch('/admin/users/add', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.style.display = 'none';
+        
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> ${data.message}
+                </div>
+            `;
+            // 清空表单
+            this.reset();
+            // 刷新页面
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i> ${data.error}
+                </div>
+            `;
+        }
+        resultDiv.style.display = 'block';
+    })
+    .catch(error => {
+        loading.style.display = 'none';
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle"></i> 添加用户失败: ${error}
+            </div>
+        `;
+        resultDiv.style.display = 'block';
+    });
+});
+
+// 删除用户
+function deleteUser(userId, username) {
+    if (!confirm(`确定要删除用户 "${username}" 吗？此操作不可恢复！`)) {
+        return;
+    }
+    
+    const loading = document.getElementById('loading');
+    loading.style.display = 'block';
+    
+    fetch(`/admin/users/${userId}/delete`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.style.display = 'none';
+        
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('删除失败: ' + data.error);
+        }
+    })
+    .catch(error => {
+        loading.style.display = 'none';
+        alert('删除失败: ' + error);
+    });
+}
+
+// 显示重置密码模态框
+function showResetPasswordModal(userId, username) {
+    currentResetUserId = userId;
+    document.getElementById('resetUsername').textContent = username;
+    const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    modal.show();
+}
+
+// 确认重置密码
+function confirmResetPassword() {
+    const newPassword = document.getElementById('newPassword').value;
+    
+    if (!newPassword) {
+        alert('请输入新密码');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        alert('密码长度至少6位');
+        return;
+    }
+    
+    const loading = document.getElementById('loading');
+    const formData = new FormData();
+    formData.append('new_password', newPassword);
+    
+    loading.style.display = 'block';
+    
+    fetch(`/admin/users/${currentResetUserId}/reset_password`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.style.display = 'none';
+        
+        if (data.success) {
+            alert(data.message);
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal'));
+            modal.hide();
+            // 清空输入框
+            document.getElementById('newPassword').value = '';
+        } else {
+            alert('重置失败: ' + data.error);
+        }
+    })
+    .catch(error => {
+        loading.style.display = 'none';
+        alert('重置失败: ' + error);
+    });
+}
+</script>
+
+<style>
+.table th {
+    background-color: #f8f9fa;
+}
+.badge {
+    font-size: 0.7em;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <h1 class="mb-4">搜索相似纹样</h1>
+
+        <!-- 搜索卡片 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form action="/search" method="post" enctype="multipart/form-data" id="searchForm">
+                    <div class="mb-3">
+                        <label for="search_image" class="form-label">上传要搜索的纹样图片</label>
+                        <input type="file" class="form-control" id="search_image" name="search_image" accept="image/*" required>
+                    </div>
+
+                    <!-- === 添加的筛选功能区域 === -->
+                    <div class="border-top pt-3 mt-3">
+                        <h6 class="mb-3">高级筛选选项</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="region_filter" class="form-label">地区筛选</label>
+                                <select class="form-select" id="region_filter" name="region_filter">
+                                    <option value="">所有地区</option>
+                                    <option value="黔东南">黔东南</option>
+                                    <option value="黔南">黔南</option>
+                                    <option value="黔西南">黔西南</option>
+                                    <option value="贵阳">贵阳</option>
+                                    <option value="遵义">遵义</option>
+                                    <option value="毕节">毕节</option>
+                                    <option value="铜仁">铜仁</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="inheritor_filter" class="form-label">传承人筛选</label>
+                                <input type="text" class="form-control" id="inheritor_filter" name="inheritor_filter" placeholder="输入传承人姓名">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="tags_filter" class="form-label">标签筛选</label>
+                                <input type="text" class="form-control" id="tags_filter" name="tags_filter" placeholder="输入标签关键词">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 mt-3">
+                        <i class="fas fa-search"></i> 搜索相似纹样
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 搜索结果区域 -->
+        {% if search_performed %}
+            {% if error %}
+                <div class="alert alert-danger mt-4">
+                    {{ error }}
+                </div>
+            {% endif %}
+
+            <div class="mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3>搜索结果</h3>
+                    {% if similar_patterns %}
+                        <span class="badge bg-primary">找到 {{ similar_patterns|length }} 个相似纹样</span>
+                    {% endif %}
+                </div>
+
+                {% if similar_patterns %}
+                    <!-- 结果排序和显示选项 -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="sort_select" class="form-label">排序方式</label>
+                            <select class="form-select" id="sort_select" onchange="sortResults()">
+                                <option value="similarity_desc">相似度从高到低</option>
+                                <option value="similarity_asc">相似度从低到高</option>
+                                <option value="name_asc">名称 A-Z</option>
+                                <option value="name_desc">名称 Z-A</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">显示选项</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="view_mode" id="grid_view" value="grid" checked onchange="changeViewMode('grid')">
+                                    <label class="form-check-label" for="grid_view">网格视图</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="view_mode" id="list_view" value="list" onchange="changeViewMode('list')">
+                                    <label class="form-check-label" for="list_view">列表视图</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 网格视图 -->
+                    <div id="grid_view_container">
+                        <div class="row">
+                            {% for pattern in similar_patterns %}
+                            <div class="col-md-4 col-lg-3 mb-4">
+                                <div class="card h-100 pattern-card">
+                                    <img src="{{ url_for('static', filename=pattern.image_url) }}"
+                                         class="card-img-top"
+                                         alt="{{ pattern.name }}"
+                                         style="height: 200px; object-fit: cover;">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ pattern.name }}</h6>
+                                        <div class="similarity-badge">
+                                            <span class="badge {% if pattern.similarity > 80 %}bg-success{% elif pattern.similarity > 60 %}bg-warning{% else %}bg-secondary{% endif %}">
+                                                相似度: {{ "%.1f"|format(pattern.similarity) }}%
+                                            </span>
+                                        </div>
+                                        <p class="card-text small mb-1">
+                                            <i class="fas fa-map-marker-alt"></i> {{ pattern.region }}
+                                        </p>
+                                        <p class="card-text small mb-1">
+                                            <i class="fas fa-user"></i> {{ pattern.inheritor }}
+                                        </p>
+                                        {% if pattern.tags %}
+                                        <p class="card-text small">
+                                            <i class="fas fa-tags"></i> {{ pattern.tags }}
+                                        </p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="card-footer">
+                                        <a href="{{ url_for('pattern_detail', pattern_id=pattern.id) }}"
+                                           class="btn btn-sm btn-outline-primary w-100">查看详情</a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- 列表视图（默认隐藏） -->
+                    <div id="list_view_container" style="display: none;">
+                        <div class="list-group">
+                            {% for pattern in similar_patterns %}
+                            <div class="list-group-item">
+                                <div class="row align-items-center">
+                                    <div class="col-md-2">
+                                        <img src="{{ url_for('static', filename=pattern.image_url) }}"
+                                             class="img-thumbnail"
+                                             alt="{{ pattern.name }}"
+                                             style="width: 100px; height: 100px; object-fit: cover;">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="mb-1">{{ pattern.name }}</h6>
+                                        <p class="mb-1 small">
+                                            <span class="badge {% if pattern.similarity > 80 %}bg-success{% elif pattern.similarity > 60 %}bg-warning{% else %}bg-secondary{% endif %}">
+                                                相似度: {{ "%.1f"|format(pattern.similarity) }}%
+                                            </span>
+                                        </p>
+                                        <p class="mb-1 small text-muted">
+                                            <i class="fas fa-map-marker-alt"></i> {{ pattern.region }}
+                                            | <i class="fas fa-user"></i> {{ pattern.inheritor }}
+                                            {% if pattern.tags %} | <i class="fas fa-tags"></i> {{ pattern.tags }}{% endif %}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <a href="{{ url_for('pattern_detail', pattern_id=pattern.id) }}"
+                                           class="btn btn-sm btn-outline-primary">查看详情</a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-search fa-2x mb-3"></i><br>
+                        没有找到相似的纹样，请尝试调整搜索条件或上传其他图片。
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <div class="mt-4 text-center">
+            <a href="/" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> 返回首页
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript 功能 -->
+<script>
+// 视图模式切换
+function changeViewMode(mode) {
+    if (mode === 'grid') {
+        document.getElementById('grid_view_container').style.display = 'block';
+        document.getElementById('list_view_container').style.display = 'none';
+    } else {
+        document.getElementById('grid_view_container').style.display = 'none';
+        document.getElementById('list_view_container').style.display = 'block';
+    }
+}
+
+// 结果排序功能
+function sortResults() {
+    const sortSelect = document.getElementById('sort_select');
+    const selectedValue = sortSelect.value;
+
+    // 这里可以添加AJAX请求来重新排序，或者在前端进行排序
+    alert('排序功能: ' + selectedValue + ' (实际项目中会实现具体排序逻辑)');
+}
+
+// 页面加载时恢复筛选条件
+document.addEventListener('DOMContentLoaded', function() {
+    // 可以从URL参数或localStorage恢复之前的筛选条件
+    const urlParams = new URLSearchParams(window.location.search);
+    const region = urlParams.get('region');
+    const inheritor = urlParams.get('inheritor');
+    const tags = urlParams.get('tags');
+
+    if (region) document.getElementById('region_filter').value = region;
+    if (inheritor) document.getElementById('inheritor_filter').value = inheritor;
+    if (tags) document.getElementById('tags_filter').value = tags;
+});
+</script>
+
+<style>
+.similarity-badge {
+    margin-bottom: 8px;
+}
+.pattern-card {
+    transition: transform 0.2s;
+}
+.pattern-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

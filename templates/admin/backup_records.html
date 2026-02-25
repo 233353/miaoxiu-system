@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>备份记录管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f5f5f5; }
+        .success { color: #28a745; font-weight: bold; }
+        .failed { color: #dc3545; font-weight: bold; }
+        .manual { color: #007bff; }
+        .restore { color: #6c757d; }
+        h1 { color: #333; border-bottom: 2px solid #4CAF50; padding-bottom: 10px; }
+        .btn {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1><i class="fas fa-history"></i> 备份记录管理</h1>
+
+    <a href="{{ url_for('backup') }}" class="btn">
+        <i class="fas fa-arrow-left"></i> 返回备份页面
+    </a>
+
+    {% if records %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>用户</th>
+                <th>备份路径</th>
+                <th>备份类型</th>
+                <th>备份大小</th>
+                <th>状态</th>
+                <th>备注</th>
+                <th>备份时间</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr>
+                <td>{{ record.id }}</td>
+                <td>
+                    <strong>{{ record.real_name or record.username }}</strong><br>
+                    <small>用户ID: {{ record.user_id }}</small>
+                </td>
+                <td>
+                    <i class="fas fa-file-archive"></i>
+                    {{ record.backup_path|truncate(40) }}
+                </td>
+                <td>
+                    {% if record.backup_type == 'manual' %}
+                        <span class="manual"><i class="fas fa-user"></i> 手动备份</span>
+                    {% elif record.backup_type == 'restore' %}
+                        <span class="restore"><i class="fas fa-redo"></i> 恢复操作</span>
+                    {% else %}
+                        {{ record.backup_type }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if record.backup_size %}
+                        {% if record.backup_size > 1048576 %}
+                            {{ "%.2f"|format(record.backup_size / 1048576) }} MB
+                        {% else %}
+                            {{ (record.backup_size / 1024)|round|int }} KB
+                        {% endif %}
+                    {% else %}
+                        <i class="fas fa-minus"></i>
+                    {% endif %}
+                </td>
+                <td class="{{ record.status }}">
+                    {% if record.status == 'success' %}
+                        <i class="fas fa-check-circle"></i> 成功
+                    {% elif record.status == 'failed' %}
+                        <i class="fas fa-times-circle"></i> 失败
+                    {% else %}
+                        {{ record.status }}
+                    {% endif %}
+                </td>
+                <td>{{ record.notes|default('', true)|truncate(30) }}</td>
+                <td>
+                    <i class="fas fa-clock"></i>
+                    {{ record.created_at[:19] if record.created_at else '' }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 40px;">
+        <i class="fas fa-inbox" style="font-size: 48px; color: #ccc;"></i>
+        <h3>暂无备份记录</h3>
+        <p>还没有创建过任何备份记录</p>
+    </div>
+    {% endif %}
+</body>
+</html>

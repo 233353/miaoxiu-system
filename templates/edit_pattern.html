@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4"><i class="fas fa-edit"></i> 编辑纹样</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                <div class="row">
+                    <!-- 左侧：纹样图片 -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">当前纹样图片</label>
+                            <div>
+                                <img src="{{ url_for('static', filename=pattern.image_url) }}" 
+                                     alt="{{ pattern.name }}" 
+                                     class="img-fluid rounded" 
+                                     style="max-height: 300px;">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="image" class="form-label">更换图片（可选）</label>
+                            <input type="file" class="form-control" id="image" name="image" 
+                                   accept=".png,.jpg,.jpeg,.gif">
+                            <div class="form-text">支持格式: PNG, JPG, JPEG, GIF</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧：纹样信息 -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">纹样名称 *</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ pattern.name }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="region" class="form-label">所属地区</label>
+                            <input type="text" class="form-control" id="region" name="region" 
+                                   value="{{ pattern.region or '' }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="inheritor" class="form-label">传承人</label>
+                            <input type="text" class="form-control" id="inheritor" name="inheritor" 
+                                   value="{{ pattern.inheritor or '' }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="tags" class="form-label">标签（用逗号分隔）</label>
+                            <input type="text" class="form-control" id="tags" name="tags" 
+                                   value="{{ pattern.tags or '' }}">
+                            <div class="form-text">例如：几何纹,红色,传统</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 描述 -->
+                <div class="mb-3">
+                    <label for="description" class="form-label">详细描述</label>
+                    <textarea class="form-control" id="description" name="description" 
+                              rows="4">{{ pattern.description or '' }}</textarea>
+                </div>
+                
+                <!-- 按钮 -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> 保存修改
+                    </button>
+                    <a href="{{ url_for('pattern_detail', pattern_id=pattern.id) }}" 
+                       class="btn btn-secondary">
+                        <i class="fas fa-times"></i> 取消
+                    </a>
+                    <button type="button" class="btn btn-danger ms-auto" 
+                            onclick="confirmDelete({{ pattern.id }})">
+                        <i class="fas fa-trash"></i> 删除纹样
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(patternId) {
+    if (confirm('确定要删除这个纹样吗？此操作不可恢复！')) {
+        fetch(`/pattern/${patternId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('纹样删除成功！');
+                window.location.href = '/';
+            } else {
+                alert('删除失败: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('删除失败: ' + error);
+        });
+    }
+}
+</script>
+{% endblock %}
