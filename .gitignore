@@ -1,0 +1,88 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+pip-wheel-metadata/
+*.egg-info/
+*.egg
+*.pyc
+
+# Database
+*.db
+*.sqlite3
+database.db
+miaoxiu_database.db
+
+# Uploads
+static/uploads/*
+!static/uploads/.gitkeep
+backups/
+backups/*
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Environment variables
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+config.py
+secrets.py
+
+# person
+reset_admin.py
+my_password.py
+personal_*.py
+
+#daily
+*.log
+logs/
+log/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+*.code-workspace
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# temp
+dist/
+build/
+*.manifest
+*.spec
+*.exe
+*.dll
+*.pyd
+
+#test
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/# Uploads configuration
+!static/uploads/
+/static/uploads/
