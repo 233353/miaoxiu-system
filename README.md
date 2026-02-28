@@ -1,10 +1,73 @@
 # 苗绣纹样智能管理系统
  
-基于深度学习的苗绣纹样识别、检索与管理系统 
-> 1.**在线演示**：
+**项目定位**：非遗文化数字化管理平台，支持纹样录入、分类检索、权限管理  
+**在线演示**：http://47.97.101.124  
+**项目源码**：https://github.com/233353/miaoxiu-system
 > 
 > 2.**联系作者**：1844657767@qq.com
 > 
+
+## 部署文档
+> 1.服务器准备：
+> 系统：Alibaba Cloud Linux 3/ CentOS 7+
+> 配置：2核2G及以上
+> 安全组：开放80端口
+>
+> 2.环境安装：
+```bash
+# 更新系统
+yum update -y
+
+# 安装Python、Nginx
+yum install python3 python3.11-pip nginx -y
+
+# 启动Nginx
+systemctl start nginx
+systemctl enable nginx
+```
+> 下载WinSCP
+> 3.项目部署：
+```bash
+# 上传项目到 /var/www/miaoxiu
+cd /var/www/miaoxiu
+
+# 安装依赖
+pip3 install -r reqirements.txt
+
+# 设置环境变量
+export SECRET_KEY="your-production-secret-key"
+echo 'export SECRET_KEY="your-production-secret-key"' >> ~/.bashrc
+
+# 初始化管理员密码
+python3.11 reset_admin.py
+
+# 启动应用程序
+nohup python3.11 app.py > app.log 2>&1 &
+```
+
+> 4.Nginx配置
+```bash
+server{
+    listen 80;
+    server_name 你的IP或域名;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X=Real-IP $remote_addr;
+   }
+
+   location /static{
+       alias /var/www/miaoxiu/static;
+   }
+}
+```
+
+> 5.重启Nginx
+```bash
+nginx -t
+systemctl restart nginx
+```
 
 ## 项目亮点
 | 特性           | 说明 | 技术实现 |
@@ -41,7 +104,7 @@
 ## 快速开始
 ```bash
 # 环境要求
-- Python 3.8+
+- Python 3.11+
 - SQLite 3
 - 至少2GB内存（用于AI模型）
 
