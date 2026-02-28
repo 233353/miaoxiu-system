@@ -28,12 +28,15 @@ app = Flask(__name__)
 load_dotenv()
 
 # 应用配置
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable not set")
+
 app.config.update(
-    SECRET_KEY=os.environ.get('SECRET_KEY', 'resume-project-dev-key-123'),
+    SECRET_KEY=SECRET_KEY,
     UPLOAD_FOLDER='static/uploads',
     DATABASE='database.db',
     MAX_CONTENT_LENGTH=16 * 1024 * 1024,
-    # 安全配置
     SESSION_COOKIE_HTTPONLY=True,
     PERMANENT_SESSION_LIFETIME=3600,
 )
