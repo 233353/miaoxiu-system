@@ -32,7 +32,7 @@ systemctl enable nginx
 cd /var/www/miaoxiu
 
 # 安装依赖
-pip3 install -r reqirements.txt
+pip3 install -r requirements.txt
 
 # 设置环境变量
 export SECRET_KEY="your-production-secret-key"
@@ -54,7 +54,7 @@ server{
     location / {
         proxy_pass http://127.0.0.1:5000;
         proxy_set_header Host $host;
-        proxy_set_header X=Real-IP $remote_addr;
+        proxy_set_header X-Real-IP $remote_addr;
    }
 
    location /static{
